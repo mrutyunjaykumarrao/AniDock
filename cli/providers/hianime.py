@@ -1,0 +1,1 @@
+HIANIME_KEY = "hianime"
