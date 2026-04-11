@@ -1,0 +1,12 @@
+.idea/
+ideas
+ideas.key
+Files/
+Goblin Slayer/
+downloads/
+__pycache__/
+.DS_Store
+.venv/
+*.log
+*.tmp
+input.txt
