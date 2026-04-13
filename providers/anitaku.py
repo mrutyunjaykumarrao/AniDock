@@ -155,10 +155,66 @@ class AnitakuProvider(ProviderAdapter):
 
 def extract_m3u8_from_embed_url(embed_url: str) -> str | None:
     embed_page = fetch(embed_url)
-    m3u8_matches = re.findall(r"https?://[^\"']+\.m3u8[^\"']*", embed_page.text)
-    if not m3u8_matches:
+    direct_matches = _extract_m3u8_candidates(embed_page.text)
+    if direct_matches:
+        return direct_matches[0]
+
+    unpacked = _unpack_eval_packer_script(embed_page.text)
+    if not unpacked:
         return None
-    return m3u8_matches[0]
+
+    unpacked_candidates = _extract_m3u8_candidates(unpacked)
+    if not unpacked_candidates:
+        return None
+
+    normalized_candidates = [urljoin(embed_url, candidate) for candidate in unpacked_candidates]
+    normalized_candidates.sort(
+        key=lambda candidate: (
+            0 if "/stream/" in candidate and candidate.endswith(".m3u8") else 1,
+            0 if candidate.startswith("https://") else 1,
+        )
+    )
+    return normalized_candidates[0]
+
+
+def _extract_m3u8_candidates(text: str) -> list[str]:
+    pattern = r"(?:https?://[^\"']+\.m3u8[^\"']*|/[^\"']+\.m3u8[^\"']*)"
+    seen: set[str] = set()
+    candidates: list[str] = []
+    for match in re.findall(pattern, text):
+        token = str(match).strip()
+        if not token or token in seen:
+            continue
+        seen.add(token)
+        candidates.append(token)
+    return candidates
+
+
+def _unpack_eval_packer_script(html: str) -> str | None:
+    packed_pattern = re.compile(
+        r"eval\(function\(p,a,c,k,e,d\)\{.*?\}\('(?P<payload>.*?)',(?P<radix>\d+),(?P<count>\d+),'(?P<symtab>.*?)'\.split\('\|'\)",
+        re.DOTALL,
+    )
+    match = packed_pattern.search(html)
+    if not match:
+        return None
+
+    payload = match.group("payload")
+    radix = int(match.group("radix"))
+    symbol_table = match.group("symtab").split("|")
+
+    def replace_token(token_match: re.Match[str]) -> str:
+        token = token_match.group(0)
+        try:
+            index = int(token, radix)
+        except ValueError:
+            return token
+        if index >= len(symbol_table):
+            return token
+        replacement = symbol_table[index]
+        return replacement if replacement else token
+
+    return re.sub(r"\b\w+\b", replace_token, payload)
 
 
 def extract_subtitle_url_from_embed_url(embed_url: str) -> str | None:
