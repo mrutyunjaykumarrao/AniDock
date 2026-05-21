@@ -303,7 +303,7 @@ class HiAnimeProvider(ProviderAdapter):
                 title = anchor.get("title") or anchor.get_text(" ", strip=True)
                 if not title:
                     continue
-                results.append(SearchResult(title=title.strip(), category_url=absolute))
+                results.append(SearchResult(title=str(title).strip(), category_url=absolute))
             if results:
                 break
         return results
@@ -405,10 +405,10 @@ class HiAnimeProvider(ProviderAdapter):
             seen.add(server_id)
             label = " ".join(node.get_text(" ", strip=True).split()) or "Unknown"
             subtitle_mode = "SUB"
-            class_hints = " ".join(str(value) for value in (node.get("class", []) or []))
+            class_hints = " ".join(str(value) for value in (node.get("class") or []))
             parent = node.find_parent(["div", "ul", "section"])
             parent_text = parent.get_text(" ", strip=True).upper() if parent else ""
-            parent_classes = " ".join(str(value) for value in ((parent.get("class", []) if parent else []) or []))
+            parent_classes = " ".join(str(value) for value in (parent.get("class", []) if parent else []))
             hint_blob = " ".join([class_hints, parent_classes, parent_text]).lower()
             if "dub" in hint_blob:
                 subtitle_mode = "DUB"

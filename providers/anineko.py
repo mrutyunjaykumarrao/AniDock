@@ -9,13 +9,13 @@ from core.models import SearchResult, ServerOption
 from core.network import fetch, locked_print, set_request_referer
 from providers.base import AnimeReference, ProviderAdapter, ProviderCapabilities, ResolvedStream, StreamPreferences
 
-BASE_URL = "https://anitaku.to"
-SEARCH_URL = BASE_URL + "/search.html?keyword="
+BASE_URL = "https://anineko.to"
+SEARCH_URL = BASE_URL + "/browser?keyword="
 
 
-class AnitakuProvider(ProviderAdapter):
-    key = "anitaku"
-    name = "Anitaku"
+class AninekoProvider(ProviderAdapter):
+    key = "anineko"
+    name = "Anineko"
     capabilities = ProviderCapabilities(
         subtitle_modes=("SUB", "DUB", "HSUB/RAW"),
         quality_selection="HLS variants; defaults to highest when no explicit choice is requested.",
@@ -34,15 +34,40 @@ class AnitakuProvider(ProviderAdapter):
 
         results: list[SearchResult] = []
         seen: set[str] = set()
-        for anchor in search_soup.select("ul.items li p.name a[href]"):
+        for card in search_soup.select("article.nv-anime-card"):
+            anchor = card.select_one("a.nv-anime-thumb[href], h3.nv-anime-title a[href]")
+            if not anchor:
+                continue
             href = str(anchor.get("href", "")).strip()
             if not href:
+                continue
+            if "/watch/" not in href or "/ep-" in href:
                 continue
             absolute_href = urljoin(BASE_URL, href)
             if absolute_href in seen:
                 continue
             seen.add(absolute_href)
-            results.append(SearchResult(title=anchor.get_text(strip=True), category_url=absolute_href))
+            title_anchor = card.select_one("h3.nv-anime-title a[href]") or anchor
+            title = title_anchor.get_text(strip=True)
+            if not title:
+                continue
+            results.append(SearchResult(title=title, category_url=absolute_href))
+
+        if not results:
+            for anchor in search_soup.select("a.nv-anime-thumb[href], h3.nv-anime-title a[href]"):
+                href = str(anchor.get("href", "")).strip()
+                if not href:
+                    continue
+                if "/watch/" not in href or "/ep-" in href:
+                    continue
+                absolute_href = urljoin(BASE_URL, href)
+                if absolute_href in seen:
+                    continue
+                seen.add(absolute_href)
+                title = anchor.get("title") or anchor.get_text(strip=True)
+                if not title:
+                    continue
+                results.append(SearchResult(title=str(title).strip(), category_url=absolute_href))
 
         if not results:
             raise NoSearchResultsError("No anime found for the provided query.")
@@ -54,22 +79,34 @@ class AnitakuProvider(ProviderAdapter):
         anime_page = fetch(anime_url)
         anime_page_soup = BeautifulSoup(anime_page.text, "lxml")
 
-        anime_slug = anime_url.rstrip("/").split("/category/")[-1]
-        expected_episode_prefix = "/" + anime_slug + "-episode-"
-
         episode_links: list[str] = []
         seen: set[str] = set()
-        for anchor in anime_page_soup.select("a[href*='-episode-']"):
-            href = str(anchor.get("href", "")).strip()
-            if not href:
-                continue
-            if expected_episode_prefix not in href:
-                continue
-            absolute = urljoin(BASE_URL, href)
-            if absolute in seen:
-                continue
-            seen.add(absolute)
-            episode_links.append(absolute)
+        selectors = (
+            "a.nv-info-episode-main[href*='/watch/'][href*='/ep-']",
+            "article.nv-info-episode-item a[href*='/watch/'][href*='/ep-']",
+        )
+        for selector in selectors:
+            for anchor in anime_page_soup.select(selector):
+                href = str(anchor.get("href", "")).strip()
+                if not href:
+                    continue
+                absolute = urljoin(BASE_URL, href)
+                if absolute in seen:
+                    continue
+                seen.add(absolute)
+                episode_links.append(absolute)
+            if episode_links:
+                break
+        if not episode_links:
+            for anchor in anime_page_soup.select("a[href*='/watch/'][href*='/ep-']"):
+                href = str(anchor.get("href", "")).strip()
+                if not href:
+                    continue
+                absolute = urljoin(BASE_URL, href)
+                if absolute in seen:
+                    continue
+                seen.add(absolute)
+                episode_links.append(absolute)
 
         if not episode_links:
             raise NoSearchResultsError("No episode links found on the anime page.")
@@ -235,7 +272,7 @@ def get_server_provider(embed_url: str) -> str:
         return "StreamHG"
     if "otakuvid.online" in host:
         return "Earnvids"
-    if "myvidplay.com" in host:
+    if "playmogo.com" in host:
         return "Doodstream"
     return host or "Unknown"
 
@@ -245,9 +282,9 @@ def collect_server_options(episode_url: str) -> list[ServerOption]:
     episode_soup = BeautifulSoup(episode_page.text, "lxml")
 
     tab_mode_by_key: dict[str, str] = {}
-    for tab_label in episode_soup.select(".servers-tab .name_type[data-type]"):
-        tab_type = str(tab_label.get("data-type", "")).strip().upper()
-        class_names = tab_label.get("class", [])
+    for tab_label in episode_soup.select(".nv-server-tab[data-id]"):
+        tab_type = str(tab_label.get("data-id", "")).strip().upper()
+        class_names = tab_label.get("class") or []
         tab_key = next((name for name in class_names if isinstance(name, str) and name.startswith("tab_")), "")
         if not tab_key:
             continue
@@ -260,7 +297,7 @@ def collect_server_options(episode_url: str) -> list[ServerOption]:
 
     raw_options: list[dict] = []
     tab_has_subtitles: dict[str, bool] = {}
-    for server_link in episode_soup.select("a.server-video[data-video]"):
+    for server_link in episode_soup.select("button.server-video[data-video], a.server-video[data-video]"):
         embed_url = str(server_link.get("data-video", "")).strip()
         if not embed_url:
             continue

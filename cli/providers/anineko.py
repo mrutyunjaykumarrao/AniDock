@@ -1,0 +1,1 @@
+ANINEKO_KEY = "anineko"

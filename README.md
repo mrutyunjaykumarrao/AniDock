@@ -1,11 +1,10 @@
 # AniDock
 
-AniDock is a Python-based anime downloader with a robust **CLI workflow** and a full **GUI app**, built around modular provider adapters and resumable batch downloads.
+AniDock is a Python-based anime downloader focused on a robust **CLI workflow**, built around modular provider adapters and resumable batch downloads.
 
 ## Highlights
 
-### CLI
-- Multi-provider search and streaming (`anitaku`, `hianime`)
+- Multi-provider search and streaming (`anineko`, `hianime`)
 - Provider chain + fallback resolution per episode
 - Episode queue input:
   - single (`12`)
@@ -22,14 +21,6 @@ AniDock is a Python-based anime downloader with a robust **CLI workflow** and a 
 - Parallel downloads (1-3 workers)
 - Progress, queue status snapshots, and batch summary
 
-### GUI
-- Search and queue selected episodes
-- Settings for provider chain, subtitles/audio, quality, workers, and container behavior
-- Live queue status and progress updates
-- Manifest-aware actions:
-  - start new queue
-  - continue pending
-  - retry failed
 
 ## Requirements
 
@@ -47,16 +38,8 @@ pip install -r requirements.txt
 
 ## Usage
 
-### CLI (recommended primary flow)
-
 ```bash
 python scraper.py
-```
-
-### GUI
-
-```bash
-python -m gui.main
 ```
 
 ## Project Structure
@@ -65,7 +48,6 @@ python -m gui.main
 AniDock/
 ├── cli/                # CLI orchestration and prompts
 ├── core/               # Shared download engine, parsing, manifest, media, exceptions
-├── gui/                # PySide6 GUI package
 ├── providers/          # Provider implementations + registry
 ├── downloads/          # Output directory (created/used at runtime)
 ├── scraper.py          # CLI launcher

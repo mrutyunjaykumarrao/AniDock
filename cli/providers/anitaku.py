@@ -1,1 +1,0 @@
-ANITAKU_KEY = "anitaku"

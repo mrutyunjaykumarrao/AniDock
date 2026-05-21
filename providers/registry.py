@@ -16,10 +16,10 @@ def register_builtin_providers() -> None:
     global _BUILTINS_REGISTERED
     if _BUILTINS_REGISTERED:
         return
-    from providers.anitaku import AnitakuProvider
+    from providers.anineko import AninekoProvider
     from providers.hianime import HiAnimeProvider
 
-    register_provider(AnitakuProvider(), is_default=True)
+    register_provider(AninekoProvider(), is_default=True)
     register_provider(HiAnimeProvider(), is_default=False)
     _BUILTINS_REGISTERED = True
 
