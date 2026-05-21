@@ -46,11 +46,33 @@ python scraper.py
 
 ```text
 AniDock/
-├── cli/                # CLI orchestration and prompts
-├── core/               # Shared download engine, parsing, manifest, media, exceptions
-├── providers/          # Provider implementations + registry
-├── downloads/          # Output directory (created/used at runtime)
-├── scraper.py          # CLI launcher
+├── cli/                 # CLI orchestration and prompts
+│   ├── __init__.py
+│   ├── app.py           # CLI main entry and menu flow
+│   └── providers/       # CLI provider constants
+│       ├── __init__.py
+│       ├── anineko.py
+│       └── hianime.py
+├── core/                # Download engine, parsing, manifest, media, exceptions
+│   ├── __init__.py
+│   ├── downloader.py    # Episode downloader + queue execution
+│   ├── exceptions.py    # Custom project exceptions
+│   ├── input_parsing.py # Queue parsing and sanitization
+│   ├── manifest.py      # State tracking for resume/retry flows
+│   ├── media.py         # FFmpeg wrapping (muxing/remuxing functions)
+│   ├── models.py        # Data structures (SearchResult, Episode, Stream)
+│   ├── network.py       # Requests helpers + retry handling
+│   ├── playlist.py      # HLS playlist parsing utilities
+│   ├── progress.py      # Progress rendering
+│   └── site.py          # Provider orchestration utilities
+├── providers/           # Provider implementations + registry
+│   ├── __init__.py      # Provider base and registry
+│   ├── anineko.py       # Anineko search and extraction logic
+│   ├── base.py          # Provider adapter interfaces
+│   ├── hianime.py       # HiAnime search and extraction logic
+│   └── registry.py      # Provider registration + lookup
+├── downloads/           # Output directory (created/used at runtime)
+├── scraper.py           # CLI launcher
 ├── requirements.txt
 └── README.md
 ```
